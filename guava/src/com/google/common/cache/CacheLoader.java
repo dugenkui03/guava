@@ -86,6 +86,7 @@ public abstract class CacheLoader<K, V> {
    *
    * @param key the non-null key whose value should be loaded
    * @param oldValue the non-null old value corresponding to {@code key}
+   *                 旧值、非空
    * @return the future new value associated with {@code key}; <b>must not be null, must not return
    *     null</b>
    * @throws Exception if unable to reload the result
@@ -98,25 +99,33 @@ public abstract class CacheLoader<K, V> {
   public ListenableFuture<V> reload(K key, V oldValue) throws Exception {
     checkNotNull(key);
     checkNotNull(oldValue);
+    // load(key)计算出结果后、将结果包装为异步任务的结果
     return Futures.immediateFuture(load(key));
   }
 
   /**
    * Computes or retrieves the values corresponding to {@code keys}. This method is called by {@link
    * LoadingCache#getAll}.
+   * kp 当LoadingCache#getAll的时候、调用此方法
    *
    * <p>If the returned map doesn't contain all requested {@code keys} then the entries it does
    * contain will be cached, but {@code getAll} will throw an exception. If the returned map
    * contains extra keys not present in {@code keys} then all returned entries will be cached, but
    * only the entries for {@code keys} will be returned from {@code getAll}.
+   * kp 如果返回结果不包含所有的key、则该方法返回的有效 k-v将会被缓存、但是 getAll() 将会抛异常；
+   *    如果返回了多余的数据、则所有的数据将会被缓存、但是只有 getAll参数key对应的数据才会在getAll中返回。
    *
-   * <p>This method should be overridden when bulk retrieval is significantly more efficient than
+   * <p>This method should be overridden when bulk(批量) retrieval is significantly more efficient than
    * many individual lookups. Note that {@link LoadingCache#getAll} will defer to individual calls
    * to {@link LoadingCache#get} if this method is not overridden.
    *
    * @param keys the unique, non-null keys whose values should be loaded
-   * @return a map from each key in {@code keys} to the value associated with that key; <b>may not
-   *     contain null values</b>
+   *             kp 非空、不重复的数据
+   *
+   * @return a map from each key in {@code keys} to the value associated with that key;
+   *         <b>may not contain null values 不能包含null</b>
+   *         kp 返回key及其对应的value
+   *
    * @throws Exception if unable to load the result
    * @throws InterruptedException if this method is interrupted. {@code InterruptedException} is
    *     treated like any other {@code Exception} in all respects except that, when it is caught,
