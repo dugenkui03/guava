@@ -45,6 +45,7 @@ public interface Cache<K, V> {
   /**
    * Returns the value associated with {@code key} in this cache, or {@code null} if there is no
    * cached value for {@code key}.
+   * kp 参数类型是Object；没有抛检查异常。
    *
    * @since 11.0
    */
@@ -53,8 +54,9 @@ public interface Cache<K, V> {
 
   /**
    * Returns the value associated with {@code key} in this cache, obtaining that value from {@code
-   * loader} if necessary. The method improves upon the conventional "if cached, return; otherwise
-   * create, cache and return" pattern. For further improvements, use {@link LoadingCache} and its
+   * loader} if necessary. The method improves upon the conventional
+   * "if cached, return; otherwise create, cache and return" pattern. kp 命中缓存则返回、否则创建
+   * For further improvements, use {@link LoadingCache} and its
    * {@link LoadingCache#get(Object) get(K)} method instead of this one.
    *
    * <p>Among the improvements that this method and {@code LoadingCache.get(K)} both provide are:
@@ -102,14 +104,17 @@ public interface Cache<K, V> {
   /**
    * Returns a map of the values associated with {@code keys} in this cache. The returned map will
    * only contain entries which are already present in the cache.
+   * kp 只返回已经缓存成功的数据。
    *
    * @since 11.0
    */
   ImmutableMap<K, V> getAllPresent(Iterable<?> keys);
 
   /**
-   * Associates {@code value} with {@code key} in this cache. If the cache previously contained a
-   * value associated with {@code key}, the old value is replaced by {@code value}.
+   * Associates {@code value} with {@code key} in this cache.
+   * If the cache previously contained a value associated with {@code key},
+   * the old value is replaced by {@code value}.
+   * kp 设置缓存、如果有旧值则更新。
    *
    * <p>Prefer {@link #get(Object, Callable)} when using the conventional "if cached, return;
    * otherwise create, cache and return" pattern.
@@ -128,17 +133,20 @@ public interface Cache<K, V> {
    */
   void putAll(Map<? extends K, ? extends V> m);
 
-  /** Discards any cached value for key {@code key}. */
+  /**
+   * Discards any cached value for key {@code key}.
+   * 使 key 失效
+   */
   void invalidate(@CompatibleWith("K") Object key);
 
   /**
    * Discards any cached values for keys {@code keys}.
-   *
+   * 使 keys 失效
    * @since 11.0
    */
   void invalidateAll(Iterable<?> keys);
 
-  /** Discards all entries in the cache. */
+  /** Discards all entries in the cache. 使所有缓存数据失效 */
   void invalidateAll();
 
   /** Returns the approximate number of entries in this cache. */
@@ -160,8 +168,9 @@ public interface Cache<K, V> {
   CacheStats stats();
 
   /**
-   * Returns a view of the entries stored in this cache as a thread-safe map. Modifications made to
-   * the map directly affect the cache.
+   * Returns a view of the entries stored in this cache as a thread-safe map.
+   * Modifications made to the map directly affect the cache.
+   * kp 对map的修改也会影响到cache中的数据。
    *
    * <p>Iterators from the returned map are at least <i>weakly consistent</i>: they are safe for
    * concurrent use, but if the cache is modified (including by eviction) after the iterator is

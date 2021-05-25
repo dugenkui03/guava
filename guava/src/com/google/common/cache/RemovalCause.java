@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * The reason why a cached entry was removed.
+ * kp 移除该缓存的原因
  *
  * @author Charles Fry
  * @since 10.0
@@ -40,6 +41,7 @@ public enum RemovalCause {
   },
 
   /**
+   *  kp 被替换了
    * The entry itself was not actually removed, but its value was replaced by the user. This can
    * result from the user invoking {@link Cache#put}, {@link LoadingCache#refresh}, {@link Map#put},
    * {@link Map#putAll}, {@link ConcurrentMap#replace(Object, Object)}, or {@link
@@ -53,6 +55,8 @@ public enum RemovalCause {
   },
 
   /**
+   * kp 使用了 CacheBuilder#weakKeys 、CacheBuilder#weakValues 或者 CacheBuilder#softValues，数据被垃圾回收了。
+   *    https://juejin.cn/post/6844903665241686029
    * The entry was removed automatically because its key or value was garbage-collected. This can
    * occur when using {@link CacheBuilder#weakKeys}, {@link CacheBuilder#weakValues}, or {@link
    * CacheBuilder#softValues}.
@@ -65,6 +69,7 @@ public enum RemovalCause {
   },
 
   /**
+   * kp 设置了CacheBuilder#expireAfterWrite} or {@link CacheBuilder#expireAfterAccess}、到了失效时间
    * The entry's expiration timestamp has passed. This can occur when using {@link
    * CacheBuilder#expireAfterWrite} or {@link CacheBuilder#expireAfterAccess}.
    */
@@ -76,6 +81,7 @@ public enum RemovalCause {
   },
 
   /**
+   * kp 超过缓存大小限制
    * The entry was evicted due to size constraints. This can occur when using {@link
    * CacheBuilder#maximumSize} or {@link CacheBuilder#maximumWeight}.
    */

@@ -1866,7 +1866,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     /** The number of live elements in this segment's region. */
     volatile int count;
 
-    /** The weight of the live elements in this segment's region. */
+    /**
+     * The weight of the live elements in this segment's region.
+     * kp "片段区中所有元素的权重"
+     */
     @GuardedBy("this")
     long totalWeight;
 
@@ -2007,6 +2010,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     @GuardedBy("this")
     void setValue(ReferenceEntry<K, V> entry, K key, V value, long now) {
       ValueReference<K, V> previous = entry.getValueReference();
+      // todo 干啥用的
       int weight = map.weigher.weigh(key, value);
       checkState(weight >= 0, "Weights must be non-negative");
 
@@ -2528,8 +2532,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     }
 
     /**
-     * Updates eviction metadata that {@code entry} was just written. This currently amounts to
-     * adding {@code entry} to relevant eviction lists.
+     * Updates eviction metadata that {@code entry} was just written.
+     * This currently amounts to adding {@code entry} to relevant eviction lists.
      */
     @GuardedBy("this")
     void recordWrite(ReferenceEntry<K, V> entry, int weight, long now) {

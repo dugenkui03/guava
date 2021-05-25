@@ -167,50 +167,65 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  */
 @GwtCompatible(emulated = true)
 public final class CacheBuilder<K, V> {
+
+  // 初始化容量
   private static final int DEFAULT_INITIAL_CAPACITY = 16;
+
+  // 默认并行级别
   private static final int DEFAULT_CONCURRENCY_LEVEL = 4;
 
-  @SuppressWarnings("GoodTime") // should be a java.time.Duration
+  // 默认 失效 纳秒
+  // should be a java.time.Duration
+  @SuppressWarnings("GoodTime")
   private static final int DEFAULT_EXPIRATION_NANOS = 0;
 
-  @SuppressWarnings("GoodTime") // should be a java.time.Duration
+  // should be a java.time.Duration
+  @SuppressWarnings("GoodTime")
   private static final int DEFAULT_REFRESH_NANOS = 0;
 
-  static final Supplier<? extends StatsCounter> NULL_STATS_COUNTER =
-      Suppliers.ofInstance(
+  // 什么都不做的状态计数器
+  static final Supplier<? extends StatsCounter> NULL_STATS_COUNTER = Suppliers.ofInstance(
           new StatsCounter() {
             @Override
-            public void recordHits(int count) {}
+            public void recordHits(int count) {
+            }
 
             @Override
-            public void recordMisses(int count) {}
-
-            @SuppressWarnings("GoodTime") // b/122668874
-            @Override
-            public void recordLoadSuccess(long loadTime) {}
+            public void recordMisses(int count) {
+            }
 
             @SuppressWarnings("GoodTime") // b/122668874
             @Override
-            public void recordLoadException(long loadTime) {}
+            public void recordLoadSuccess(long loadTime) {
+            }
+
+            @SuppressWarnings("GoodTime") // b/122668874
+            @Override
+            public void recordLoadException(long loadTime) {
+            }
 
             @Override
-            public void recordEviction() {}
+            public void recordEviction() {
+            }
 
             @Override
             public CacheStats snapshot() {
               return EMPTY_STATS;
             }
-          });
+          }
+  );
+  // 空状态技术结果
   static final CacheStats EMPTY_STATS = new CacheStats(0, 0, 0, 0, 0, 0);
 
-  static final Supplier<StatsCounter> CACHE_STATS_COUNTER =
-      new Supplier<StatsCounter>() {
+  // kp 返回 SimpleStatsCounter。
+  static final Supplier<StatsCounter> CACHE_STATS_COUNTER = new Supplier<StatsCounter>() {
         @Override
         public StatsCounter get() {
           return new SimpleStatsCounter();
         }
-      };
+  };
 
+  // 移除数据的时候什么都不干
   enum NullListener implements RemovalListener<Object, Object> {
     INSTANCE;
 
@@ -218,6 +233,7 @@ public final class CacheBuilder<K, V> {
     public void onRemoval(RemovalNotification<Object, Object> notification) {}
   }
 
+  // 缓存entry总是1
   enum OneWeigher implements Weigher<Object, Object> {
     INSTANCE;
 
@@ -239,6 +255,7 @@ public final class CacheBuilder<K, V> {
 
   static final int UNSET_INT = -1;
 
+  // maximumSize 和 maximumWeight 是否必须设置
   boolean strictParsing = true;
 
   int initialCapacity = UNSET_INT;
@@ -256,6 +273,7 @@ public final class CacheBuilder<K, V> {
   @SuppressWarnings("GoodTime") // should be a java.time.Duration
   long expireAfterAccessNanos = UNSET_INT;
 
+  // todo 放到toString()中
   @SuppressWarnings("GoodTime") // should be a java.time.Duration
   long refreshNanos = UNSET_INT;
 
@@ -307,6 +325,7 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Enables lenient parsing. Useful for tests and spec parsing.
+   * kp 允许？宽泛的解析？
    *
    * @return this {@code CacheBuilder} instance (for chaining)
    */
@@ -318,6 +337,7 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Sets a custom {@code Equivalence} strategy for comparing keys.
+   * kp 设置自定义的 key 相等比较策略
    *
    * <p>By default, the cache uses {@link Equivalence#identity} to determine key equality when
    * {@link #weakKeys} is specified, and {@link Equivalence#equals()} otherwise.
@@ -368,21 +388,29 @@ public final class CacheBuilder<K, V> {
    * @throws IllegalStateException if an initial capacity was already set
    */
   public CacheBuilder<K, V> initialCapacity(int initialCapacity) {
+    // 检查设置的值是否正确
     checkState(
         this.initialCapacity == UNSET_INT,
         "initial capacity was already set to %s",
-        this.initialCapacity);
+        this.initialCapacity
+    );
+
+    // 初始容量必须 >= 0
     checkArgument(initialCapacity >= 0);
     this.initialCapacity = initialCapacity;
     return this;
   }
 
+  // 如果没有设置过、则返回默认的16
   int getInitialCapacity() {
     return (initialCapacity == UNSET_INT) ? DEFAULT_INITIAL_CAPACITY : initialCapacity;
   }
 
   /**
-   * Guides the allowed concurrency among update operations. Used as a hint for internal sizing. The
+   * Guides the allowed concurrency among update operations.
+   * kp 更新操作的并发度、默认为4。
+   *
+   * Used as a hint for internal sizing. The
    * table is internally partitioned to try to permit the indicated number of concurrent updates
    * without contention. Because assignment of entries to these partitions is not necessarily
    * uniform, the actual concurrency observed may vary. Ideally, you should choose a value to
@@ -534,6 +562,7 @@ public final class CacheBuilder<K, V> {
       Weigher<? super K1, ? super V1> weigher) {
     checkState(this.weigher == null);
     if (strictParsing) {
+      // 条件不为真则抛异常：必须设置 maximumSize
       checkState(
           this.maximumSize == UNSET_INT,
           "weigher can not be combined with maximum size",
@@ -1011,8 +1040,8 @@ public final class CacheBuilder<K, V> {
   }
 
   /**
-   * Returns a string representation for this CacheBuilder instance. The exact form of the returned
-   * string is not specified.
+   * Returns a string representation for this CacheBuilder instance.
+   * The exact form of the returned string is not specified.
    */
   @Override
   public String toString() {

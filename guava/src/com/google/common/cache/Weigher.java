@@ -18,6 +18,7 @@ import com.google.common.annotations.GwtCompatible;
 
 /**
  * Calculates the weights of cache entries.
+ * kp 计算 entry的权重
  *
  * @author Charles Fry
  * @since 11.0

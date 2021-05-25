@@ -26,6 +26,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Statistics about the performance of a {@link Cache}. Instances of this class are immutable.
+ * kp 缓存命中率的统计数据，可用于度量缓存的性能，该类是final、不可变的。
  *
  * <p>Cache statistics are incremented according to the following rules:
  *
@@ -58,18 +59,23 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  */
 @GwtCompatible
 public final class CacheStats {
+  // 命中的数量 和 未命中的数量
   private final long hitCount;
   private final long missCount;
+
+  // load 成功和异常的次数
   private final long loadSuccessCount;
   private final long loadExceptionCount;
 
   @SuppressWarnings("GoodTime") // should be a java.time.Duration
   private final long totalLoadTime;
 
+  // 失效的entry数量
   private final long evictionCount;
 
   /**
    * Constructs a new {@code CacheStats} instance.
+   * kp 构造函数，初始化值不能小于0
    *
    * <p>Five parameters of the same type in a row is a bad thing, but this class is not constructed
    * by end users and is too fine-grained for a builder.
