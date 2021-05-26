@@ -635,7 +635,11 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
   /** A reference to a value. */
   interface ValueReference<K, V> {
-    /** Returns the value. Does not block or throw exceptions. */
+    /**
+     * Returns the value. Does not block or throw exceptions.
+     *
+     * kp 返回结果、不可阻塞或者抛异常
+     */
     @Nullable
     V get();
 
@@ -1777,7 +1781,11 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
   // expiration
 
-  /** Returns true if the entry has expired. */
+  /**
+   * Returns true if the entry has expired.
+   *
+   * kp 写入过期 或者 访问过期满足其中之一，就会返回true
+   */
   boolean isExpired(ReferenceEntry<K, V> entry, long now) {
     checkNotNull(entry);
     if (expiresAfterAccess() && (now - entry.getAccessTime() >= expireAfterAccessNanos)) {
@@ -2053,11 +2061,17 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
           // don't call getLiveEntry, which would ignore loading values
           ReferenceEntry<K, V> e = getEntry(key, hash);
           if (e != null) {
+            // 获取当前时间-纳秒
             long now = map.ticker.read();
+            // 获取缓存的数据
             V value = getLiveValue(e, now);
+            // 如果缓存的数据不为空
             if (value != null) {
+              // 更新缓存访问时间
               recordRead(e, now);
+              // 命中缓存 + 1
               statsCounter.recordHits(1);
+              // kp 如果已经过了刷新时间、则仍算命中缓存并刷新数据。
               return scheduleRefresh(e, key, hash, value, now, loader);
             }
             ValueReference<K, V> valueReference = e.getValueReference();
@@ -2082,6 +2096,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       }
     }
 
+    // 可能会触发 refresh
     @Nullable
     V get(Object key, int hash) {
       try {
@@ -2560,6 +2575,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
      * <p>Note: locked reads should use {@link #recordLockedRead}.
      */
     void recordRead(ReferenceEntry<K, V> entry, long now) {
+      // 如果设置了 expireAfterAccessNanos则更新entry的访问时间
       if (map.recordsAccess()) {
         entry.setAccessTime(now);
       }
@@ -2752,10 +2768,14 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     }
 
     /**
-     * Gets the value from an entry. Returns null if the entry is invalid, partially-collected,
-     * loading, or expired.
+     * Gets the value from an entry.
+     * Returns null if the entry is invalid, partially-collected, loading, or expired.
+     *
      */
     V getLiveValue(ReferenceEntry<K, V> entry, long now) {
+      /**
+       *  如果key 或者 value为null、则返回null
+       */
       if (entry.getKey() == null) {
         tryDrainReferenceQueues();
         return null;
@@ -2766,6 +2786,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
         return null;
       }
 
+      // 如果数据已经过期、则返回null
       if (map.isExpired(entry, now)) {
         tryExpireEntries(now);
         return null;
@@ -4011,6 +4032,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return Ints.saturatedCast(longSize());
   }
 
+  // 可能会触发 refresh
   @Override
   public @Nullable V get(@Nullable Object key) {
     if (key == null) {
