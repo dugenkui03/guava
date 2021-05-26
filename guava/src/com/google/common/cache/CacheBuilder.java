@@ -233,7 +233,7 @@ public final class CacheBuilder<K, V> {
     public void onRemoval(RemovalNotification<Object, Object> notification) {}
   }
 
-  // 缓存entry总是1
+  // 缓存entry的weigh总是1
   enum OneWeigher implements Weigher<Object, Object> {
     INSTANCE;
 
@@ -261,8 +261,10 @@ public final class CacheBuilder<K, V> {
   int initialCapacity = UNSET_INT;
   int concurrencyLevel = UNSET_INT;
   long maximumSize = UNSET_INT;
+
   long maximumWeight = UNSET_INT;
-  @Nullable Weigher<? super K, ? super V> weigher;
+  @Nullable
+  Weigher<? super K, ? super V> weigher;
 
   @Nullable Strength keyStrength;
   @Nullable Strength valueStrength;
@@ -674,12 +676,14 @@ public final class CacheBuilder<K, V> {
   }
 
   Strength getValueStrength() {
+    // valueStrength
     return MoreObjects.firstNonNull(valueStrength, Strength.STRONG);
   }
 
   /**
-   * Specifies that each entry should be automatically removed from the cache once a fixed duration
-   * has elapsed after the entry's creation, or the most recent replacement of its value.
+   * Specifies that each entry should be automatically removed from the cache
+   * once a fixed duration has elapsed after the entry's creation, or the most recent replacement of its value.
+   * kp entry被创建或者替换 指定时间后，自动进行失效。
    *
    * <p>When {@code duration} is zero, this method hands off to {@link #maximumSize(long)
    * maximumSize}{@code (0)}, ignoring any otherwise-specified maximum size or weight. This can be
@@ -707,6 +711,7 @@ public final class CacheBuilder<K, V> {
   /**
    * Specifies that each entry should be automatically removed from the cache once a fixed duration
    * has elapsed after the entry's creation, or the most recent replacement of its value.
+   * kp entry 创建或更新一定时间后，自动从缓存中移除。
    *
    * <p>When {@code duration} is zero, this method hands off to {@link #maximumSize(long)
    * maximumSize}{@code (0)}, ignoring any otherwise-specified maximum size or weight. This can be
@@ -715,12 +720,13 @@ public final class CacheBuilder<K, V> {
    * <p>Expired entries may be counted in {@link Cache#size}, but will never be visible to read or
    * write operations. Expired entries are cleaned up as part of the routine maintenance described
    * in the class javadoc.
+   * kp 过期失效的缓存可能影响 Cache#size 的统计。
    *
    * <p>If you can represent the duration as a {@link java.time.Duration} (which should be preferred
    * when feasible), use {@link #expireAfterWrite(Duration)} instead.
    *
-   * @param duration the length of time after an entry is created that it should be automatically
-   *     removed
+   * @param duration the length of time after an entry is created that it should be automatically removed
+   *
    * @param unit the unit that {@code duration} is expressed in
    * @return this {@code CacheBuilder} instance (for chaining)
    * @throws IllegalArgumentException if {@code duration} is negative
@@ -864,11 +870,12 @@ public final class CacheBuilder<K, V> {
    * implementation; otherwise refreshes will be performed during unrelated cache read and write
    * operations.
    *
-   * <p>Currently automatic refreshes are performed when the first stale request for an entry
-   * occurs. The request triggering refresh will make a synchronous call to {@link
-   * CacheLoader#reload}
+   * <p>Currently automatic refreshes are performed
+   * when the first stale(adj 过时的) request for an entry occurs.
+   * The request triggering refresh will make a synchronous call to {@link CacheLoader#reload}
    * and immediately return the new value if the returned future is complete, and the old value
    * otherwise.
+   * todo 当出现第一个过时的数据时会刷新数据-通过异步触发CacheLoader#reload——异步任务结束的快则立即返回。
    *
    * <p><b>Note:</b> <i>all exceptions thrown during refresh will be logged and then swallowed</i>.
    *
@@ -985,7 +992,10 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Builds a cache, which either returns an already-loaded value for a given key or atomically
-   * computes or retrieves it using the supplied {@code CacheLoader}. If another thread is currently
+   * computes or retrieves it using the supplied {@code CacheLoader}.
+   * kp 不同于 build()、如果key在缓存中找不到值、则会使用参数loader进行计算。
+   *
+   * If another thread is currently
    * loading the value for this key, simply waits for that thread to finish and returns its loaded
    * value. Note that multiple threads can concurrently load values for distinct keys.
    *
@@ -1004,6 +1014,7 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Builds a cache which does not automatically load values when keys are requested.
+   * todo 该缓存不会自动刷新请求的key？是的，因为没有配置 CacheLoader
    *
    * <p>Consider {@link #build(CacheLoader)} instead, if it is feasible to implement a {@code
    * CacheLoader}.
@@ -1021,10 +1032,12 @@ public final class CacheBuilder<K, V> {
     return new LocalCache.LocalManualCache<>(this);
   }
 
+  // 检查 refreshNanos 是否设置
   private void checkNonLoadingCache() {
     checkState(refreshNanos == UNSET_INT, "refreshAfterWrite requires a LoadingCache");
   }
 
+  // todo 检查  weigher、maximumWeight，strictParsing、maximumWeight的组合关系
   private void checkWeightWithWeigher() {
     if (weigher == null) {
       checkState(maximumWeight == UNSET_INT, "maximumWeight requires weigher");
@@ -1084,6 +1097,7 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Returns the number of nanoseconds of the given duration without throwing or overflowing.
+   * 将 duration 转换为纳秒
    *
    * <p>Instead of throwing {@link ArithmeticException}, this method silently saturates to either
    * {@link Long#MAX_VALUE} or {@link Long#MIN_VALUE}. This behavior can be useful when decomposing

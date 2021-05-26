@@ -204,7 +204,11 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
   /** How long after the last write to an entry the map will retain that entry. */
   final long expireAfterWriteNanos;
 
-  /** How long after the last write an entry becomes a candidate for refresh. */
+  /**
+   * How long after the last write an entry becomes a candidate for refresh.
+   *
+   * entry写入缓存多久后、会作为缓存刷新对象。
+   */
   final long refreshNanos;
 
   /** Entries waiting to be consumed by the removal listener. */
@@ -372,6 +376,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return valueStrength != Strength.STRONG;
   }
 
+  // kp ？引用强度？：强引用、弱引用、软引用
   enum Strength {
     /*
      * TODO(kevinb): If we strongly reference the value and aren't loading, we needn't wrap the
@@ -435,7 +440,11 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     abstract Equivalence<Object> defaultEquivalence();
   }
 
-  /** Creates new entries. */
+  /**
+   * 创建新的entry：
+   *
+   * Creates new entries.
+   */
   enum EntryFactory {
     STRONG {
       @Override
