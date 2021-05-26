@@ -98,6 +98,7 @@ public interface LoadingCache<K, V> extends Cache<K, V>, Function<K, V> {
    * Returns a map of the values associated with {@code keys}, creating or retrieving those values
    * if necessary. The returned map contains entries that were already cached, combined with newly
    * loaded entries; it will never contain null keys or values.
+   * kp 返回结果可能是重新加载的、也可能是缓存的。k\v都不可能是 null。
    *
    * <p>Caches loaded by a {@link CacheLoader} will issue a single request to {@link
    * CacheLoader#loadAll} for all keys which are not already present in the cache. All entries

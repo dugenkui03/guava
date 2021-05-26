@@ -53,10 +53,12 @@ public abstract class AbstractLoadingCache<K, V> extends AbstractCache<K, V>
     }
   }
 
+  // kp getAll() 默认轮训调用 get(key)
   @Override
   public ImmutableMap<K, V> getAll(Iterable<? extends K> keys) throws ExecutionException {
     Map<K, V> result = Maps.newLinkedHashMap();
     for (K key : keys) {
+      // 已经包含、则不重新set结果
       if (!result.containsKey(key)) {
         result.put(key, get(key));
       }

@@ -2031,12 +2031,13 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     @GuardedBy("this")
     void setValue(ReferenceEntry<K, V> entry, K key, V value, long now) {
       ValueReference<K, V> previous = entry.getValueReference();
-      // todo 干啥用的
+      // kp 缓存k-v pair 的权重
       int weight = map.weigher.weigh(key, value);
       checkState(weight >= 0, "Weights must be non-negative");
 
-      ValueReference<K, V> valueReference =
-          map.valueStrength.referenceValue(this, entry, value, weight);
+      ValueReference<K, V> valueReference = map.valueStrength.referenceValue(
+              this, entry, value, weight
+      );
       entry.setValueReference(valueReference);
       recordWrite(entry, weight, now);
       previous.notifyNewValue(value);
@@ -4069,15 +4070,25 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return ImmutableMap.copyOf(result);
   }
 
-  ImmutableMap<K, V> getAll(Iterable<? extends K> keys) throws ExecutionException {
+  /**
+   * @param keys 要获取的所有value
+   * @return
+   * @throws ExecutionException
+   */
+  ImmutableMap<K, V> getAll(Iterable<? extends K> keys)
+          throws ExecutionException {
+    // 命中缓存和没有命中缓存的统计
     int hits = 0;
     int misses = 0;
 
+    // kp 结果
     Map<K, V> result = Maps.newLinkedHashMap();
+
+    // 要加载的数据：不重复、不再当前的缓存中
     Set<K> keysToLoad = Sets.newLinkedHashSet();
     for (K key : keys) {
-      V value = get(key);
       if (!result.containsKey(key)) {
+        V value = get(key);
         result.put(key, value);
         if (value == null) {
           misses++;
@@ -4093,6 +4104,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
         try {
           Map<K, V> newEntries = loadAll(keysToLoad, defaultLoader);
           for (K key : keysToLoad) {
+            // kp value如果有null、或者结果不包含对应的key
+            //    的情况、则抛出异常、不返回任何值
             V value = newEntries.get(key);
             if (value == null) {
               throw new InvalidCacheLoadException("loadAll failed to return a value for " + key);
@@ -4100,6 +4113,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
             result.put(key, value);
           }
         } catch (UnsupportedLoadingOperationException e) {
+          // kp 如果没有实现 getAll() 抛出了 不支持的操作 异常
+          //    则遍历key一一进行获取对应的value
           // loadAll not implemented, fallback to load
           for (K key : keysToLoad) {
             misses--; // get will count this miss
@@ -4118,6 +4133,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
    * Returns the result of calling {@link CacheLoader#loadAll}, or null if {@code loader} doesn't
    * implement {@code loadAll}.
    */
+
   @Nullable
   Map<K, V> loadAll(Set<? extends K> keys, CacheLoader<? super K, V> loader)
       throws ExecutionException {
@@ -4795,6 +4811,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       this.loader = loader;
     }
 
+    // 可创建当前LocalCache的CacheBuilder
     CacheBuilder<K, V> recreateCacheBuilder() {
       CacheBuilder<K, V> builder =
           CacheBuilder.newBuilder()
