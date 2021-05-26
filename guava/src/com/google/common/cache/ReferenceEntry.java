@@ -40,7 +40,11 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  */
 @GwtIncompatible
 interface ReferenceEntry<K, V> {
-  /** Returns the value reference from this entry. */
+  /**
+   * Returns the value reference from this entry.
+   *
+   * 从当前entry中返回值引用。
+   */
   ValueReference<K, V> getValueReference();
 
   /** Sets the value reference for this entry. */

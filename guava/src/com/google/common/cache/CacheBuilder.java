@@ -260,11 +260,14 @@ public final class CacheBuilder<K, V> {
 
   int initialCapacity = UNSET_INT;
   int concurrencyLevel = UNSET_INT;
-  long maximumSize = UNSET_INT;
 
-  long maximumWeight = UNSET_INT;
+  // kp 缓存的容量：设置 weigher 的时候 maximumWeight 优先，
+  //    否则使用 maximumSize 度量
   @Nullable
   Weigher<? super K, ? super V> weigher;
+  long maximumWeight = UNSET_INT;
+  long maximumSize = UNSET_INT;
+
 
   @Nullable Strength keyStrength;
   @Nullable Strength valueStrength;
@@ -491,7 +494,10 @@ public final class CacheBuilder<K, V> {
   }
 
   /**
-   * Specifies the maximum weight of entries the cache may contain. Weight is determined using the
+   * Specifies the maximum weight of entries the cache may contain.
+   * kp 可以缓存数据的最大权重
+   *
+   * Weight is determined using the
    * {@link Weigher} specified with {@link #weigher}, and use of this method requires a
    * corresponding call to {@link #weigher} prior to calling {@link #build}.
    *
@@ -578,6 +584,7 @@ public final class CacheBuilder<K, V> {
     return me;
   }
 
+  // 获取该 Cache 的最大权重，默认为字段maximumSize的值。
   long getMaximumWeight() {
     if (expireAfterWriteNanos == 0 || expireAfterAccessNanos == 0) {
       return 0;

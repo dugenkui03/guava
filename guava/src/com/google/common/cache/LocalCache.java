@@ -192,7 +192,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
   /** Strategy for referencing values. */
   final Strength valueStrength;
 
-  /** The maximum weight of this map. UNSET_INT if there is no maximum. */
+  /**
+   * The maximum weight of this map. UNSET_INT if there is no maximum.
+   * 缓存容量
+   */
   final long maxWeight;
 
   /** Weigher to weigh cache entries. */
@@ -221,7 +224,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
    */
   final RemovalListener<K, V> removalListener;
 
-  /** Measures time in a testable way. */
+  /**
+   * Measures time in a testable way.
+   */
   final Ticker ticker;
 
   /** Factory used to create new entries. */
@@ -239,8 +244,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
   /**
    * Creates a new, empty map with the specified strategy, initial capacity and concurrency level.
    */
-  LocalCache(
-      CacheBuilder<? super K, ? super V> builder, @Nullable CacheLoader<? super K, V> loader) {
+  LocalCache(CacheBuilder<? super K, ? super V> builder,
+             @Nullable CacheLoader<? super K, V> loader) {
     concurrencyLevel = Math.min(builder.getConcurrencyLevel(), MAX_SEGMENTS);
 
     keyStrength = builder.getKeyStrength();
@@ -305,8 +310,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
         if (i == remainder) {
           maxSegmentWeight--;
         }
-        this.segments[i] =
-            createSegment(segmentSize, maxSegmentWeight, builder.getStatsCounterSupplier().get());
+        // todo 没有扩容机制、起初就根据相关参数分析出 segment 的大小
+        this.segments[i] = createSegment(segmentSize, maxSegmentWeight, builder.getStatsCounterSupplier().get());
       }
     } else {
       for (int i = 0; i < this.segments.length; ++i) {
@@ -669,7 +674,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
     /**
      * Returns true if a new value is currently loading, regardless of whether or not there is an
-     * existing value. It is assumed that the return value of this method is constant for any given
+     * existing value.
+     * kp 如果新值正在加载、则返回true。
+     *
+     * It is assumed that the return value of this method is constant for any given
      * ValueReference instance.
      */
     boolean isLoading();
@@ -1738,8 +1746,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return segments[(hash >>> segmentShift) & segmentMask];
   }
 
-  Segment<K, V> createSegment(
-      int initialCapacity, long maxSegmentWeight, StatsCounter statsCounter) {
+  Segment<K, V> createSegment(int initialCapacity,
+                              long maxSegmentWeight,
+                              StatsCounter statsCounter) {
+    // 使用当前对象创建 Segment
     return new Segment<>(this, initialCapacity, maxSegmentWeight, statsCounter);
   }
 
@@ -1870,7 +1880,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
      * comments.
      */
 
-    @Weak final LocalCache<K, V> map;
+    // todo 牛逼了，Segment定义在 LocalCache中、却使用 LocalCache
+    @Weak
+    final LocalCache<K, V> map;
 
     /** The number of live elements in this segment's region. */
     volatile int count;
@@ -2338,16 +2350,22 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       }
     }
 
-    V scheduleRefresh(
-        ReferenceEntry<K, V> entry,
-        K key,
-        int hash,
-        V oldValue,
-        long now,
-        CacheLoader<? super K, V> loader) {
-      if (map.refreshes()
-          && (now - entry.getWriteTime() > map.refreshNanos)
-          && !entry.getValueReference().isLoading()) {
+    // LocalCache#Segment的内部方法
+    // kp 定时刷新的时候、如果新值为null、则仍然使用旧值
+    // todo 返回旧值和返回与旧值相同的新值是否有啥不同
+    V scheduleRefresh(ReferenceEntry<K, V> entry,
+                      K key,
+                      int hash,
+                      V oldValue,
+                      long now,
+                      CacheLoader<? super K, V> loader) {
+      // todo map 是什么
+      if (map.refreshes() // 如果设置了刷新间隔
+              // 当前时间距离写入时间大于指定的间隔
+              && (now - entry.getWriteTime() > map.refreshNanos)
+              // ？entry 无 新值正在加载？
+              && !entry.getValueReference().isLoading()
+      ) {
         V newValue = refresh(key, hash, loader, true);
         if (newValue != null) {
           return newValue;
@@ -2356,21 +2374,33 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       return oldValue;
     }
 
+
     /**
-     * Refreshes the value associated with {@code key}, unless another thread is already doing so.
-     * Returns the newly refreshed value associated with {@code key} if it was refreshed inline, or
-     * {@code null} if another thread is performing the refresh or if an error occurs during
-     * refresh.
+     * Refreshes the value associated with {@code key},
+     * unless another thread is already doing so.
+     *
+     * Returns the newly refreshed value associated with {@code key}
+     * if it was refreshed inline,
+     *
+     * or {@code null} if another thread is performing the refresh
+     * or if an error occurs during refresh.
+     * @param key
+     * @param hash
+     * @param loader
+     * @param checkTime
+     * @return
      */
     @Nullable
     V refresh(K key, int hash, CacheLoader<? super K, V> loader, boolean checkTime) {
-      final LoadingValueReference<K, V> loadingValueReference =
-          insertLoadingValueReference(key, hash, checkTime);
+      final LoadingValueReference<K, V> loadingValueReference = insertLoadingValueReference(key, hash, checkTime);
       if (loadingValueReference == null) {
         return null;
       }
 
+      // 异步刷新key
       ListenableFuture<V> result = loadAsync(key, hash, loadingValueReference, loader);
+
+      // 如果刷新任务已经结束、则
       if (result.isDone()) {
         try {
           return Uninterruptibles.getUninterruptibly(result);
@@ -2382,13 +2412,23 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     }
 
     /**
-     * Returns a newly inserted {@code LoadingValueReference}, or null if the live value reference
-     * is already loading.
+     * Returns a newly inserted {@code LoadingValueReference},
+     * or null if the live value reference is already loading.
+     * kp 返回一个新的 LoadingValueReference(正在加载的entry-value引用)
+     *    如果对应的key正在加载、则返回null、上层会判断null并阻断重复的加载。
+     *
+     * @param key
+     * @param hash
+     * @param checkTime
+     * @return
      */
     @Nullable
     LoadingValueReference<K, V> insertLoadingValueReference(
-        final K key, final int hash, boolean checkTime) {
+            final K key,
+            final int hash,
+            boolean checkTime) {
       ReferenceEntry<K, V> e = null;
+      // Segment extends ReentrantLock
       lock();
       try {
         long now = map.ticker.read();
@@ -3538,16 +3578,23 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       try {
         stopwatch.start();
         V previousValue = oldValue.get();
+
+        // kp 如果之前的值为null、则调用 loader.load()
         if (previousValue == null) {
           V newValue = loader.load(key);
+          // 如果成功为futureValue设置结果则返回futureValue，否则构造新的异步任务并set值后返回。
           return set(newValue) ? futureValue : Futures.immediateFuture(newValue);
         }
+
+        // kp 如果之前的值不为null、则使用key和旧值创建获取新值的异步任务
         ListenableFuture<V> newValue = loader.reload(key, previousValue);
+        // 异步任务为null、则返回结果为null的异步任务
         if (newValue == null) {
           return Futures.immediateFuture(null);
         }
         // To avoid a race, make sure the refreshed value is set into loadingValueReference
         // *before* returning newValue from the cache query.
+        // 为了防止竞态、先保证刷新的值放到 loadingValueReference 了，然后放回
         return transform(
             newValue,
             new com.google.common.base.Function<V, V>() {
@@ -3557,8 +3604,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
                 return newValue;
               }
             },
+            // 当前线程执行任务
             directExecutor());
       } catch (Throwable t) {
+        // 将异常作为结果返回
         ListenableFuture<V> result = setException(t) ? futureValue : fullyFailedFuture(t);
         if (t instanceof InterruptedException) {
           Thread.currentThread().interrupt();
