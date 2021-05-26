@@ -31,6 +31,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A specification of a {@link CacheBuilder} configuration.
+ * kp CacheBuilder配置的规范。
  *
  * <p>{@code CacheBuilderSpec} supports parsing configuration off of a string, which makes it
  * especially useful for command-line configuration of a {@code CacheBuilder}.
@@ -162,7 +163,11 @@ public final class CacheBuilderSpec {
     return CacheBuilderSpec.parse("maximumSize=0");
   }
 
-  /** Returns a CacheBuilder configured according to this instance's specification. */
+  /**
+   * Returns a CacheBuilder configured according to this instance's specification.
+   *
+   * 将该对象转换为 CacheBuilder 对象。
+   */
   CacheBuilder<Object, Object> toCacheBuilder() {
     CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
     if (initialCapacity != null) {

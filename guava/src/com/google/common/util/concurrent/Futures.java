@@ -449,8 +449,10 @@ public final class Futures extends GwtFuturesCatchingSpecialization {
   /**
    * Returns a new {@code Future} whose result is derived from the result of the given {@code
    * Future}. If {@code input} fails, the returned {@code Future} fails with the same exception (and
-   * the function is not invoked). Example usage:
+   * the function is not invoked).
+   * kp 当参数异步任务结束以后、使用函数计算其结果——异步任务返回的结果。
    *
+   * Example usage:
    * <pre>{@code
    * ListenableFuture<QueryResult> queryFuture = ...;
    * ListenableFuture<List<Row>> rowsFuture =
@@ -477,7 +479,9 @@ public final class Futures extends GwtFuturesCatchingSpecialization {
    */
   @Beta
   public static <I, O> ListenableFuture<O> transform(
-      ListenableFuture<I> input, Function<? super I, ? extends O> function, Executor executor) {
+          ListenableFuture<I> input,
+          Function<? super I, ? extends O> function,
+          Executor executor) {
     return AbstractTransformFuture.create(input, function, executor);
   }
 

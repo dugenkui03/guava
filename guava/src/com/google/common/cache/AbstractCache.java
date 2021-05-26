@@ -182,7 +182,9 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     void recordEviction();
 
     /**
-     * Returns a snapshot of this counter's values. Note that this may be an inconsistent view, as
+     * kp 返回当前统计数据的快照。
+     * Returns a snapshot of this counter's values.
+     * Note that this may be an inconsistent view, as
      * it may be interleaved with update operations.
      */
     CacheStats snapshot();
@@ -194,6 +196,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
    * @since 10.0
    */
   public static final class SimpleStatsCounter implements StatsCounter {
+    // todo
     private final LongAddable hitCount = LongAddables.create();
     private final LongAddable missCount = LongAddables.create();
     private final LongAddable loadSuccessCount = LongAddables.create();

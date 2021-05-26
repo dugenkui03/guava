@@ -77,6 +77,7 @@ public abstract class CacheLoader<K, V> {
    * Computes or retrieves a replacement value corresponding to an already-cached {@code key}. This
    * method is called when an existing cache entry is refreshed by {@link
    * CacheBuilder#refreshAfterWrite}, or through a call to {@link LoadingCache#refresh}.
+   * kp 刷新一个已经存在的key，被 CacheBuilder#refreshAfterWrite 或 LoadingCache#refresh 调用
    *
    * <p>This implementation synchronously delegates to {@link #load}. It is recommended that it be
    * overridden with an asynchronous implementation when using {@link
@@ -86,6 +87,7 @@ public abstract class CacheLoader<K, V> {
    *
    * @param key the non-null key whose value should be loaded
    * @param oldValue the non-null old value corresponding to {@code key}
+   *                 旧值、非空
    * @return the future new value associated with {@code key}; <b>must not be null, must not return
    *     null</b>
    * @throws Exception if unable to reload the result
@@ -98,25 +100,33 @@ public abstract class CacheLoader<K, V> {
   public ListenableFuture<V> reload(K key, V oldValue) throws Exception {
     checkNotNull(key);
     checkNotNull(oldValue);
+    // load(key)计算出结果后、将结果包装为异步任务的结果
     return Futures.immediateFuture(load(key));
   }
 
   /**
    * Computes or retrieves the values corresponding to {@code keys}. This method is called by {@link
    * LoadingCache#getAll}.
+   * kp 当LoadingCache#getAll的时候、调用此方法
    *
    * <p>If the returned map doesn't contain all requested {@code keys} then the entries it does
    * contain will be cached, but {@code getAll} will throw an exception. If the returned map
    * contains extra keys not present in {@code keys} then all returned entries will be cached, but
    * only the entries for {@code keys} will be returned from {@code getAll}.
+   * kp 如果返回结果不包含所有的key、则该方法返回的有效 k-v将会被缓存、但是 getAll() 将会抛异常；
+   *    如果返回了多余的数据、则所有的数据将会被缓存、但是只有 getAll参数key对应的数据才会在getAll中返回。
    *
-   * <p>This method should be overridden when bulk retrieval is significantly more efficient than
+   * <p>This method should be overridden when bulk(批量) retrieval is significantly more efficient than
    * many individual lookups. Note that {@link LoadingCache#getAll} will defer to individual calls
    * to {@link LoadingCache#get} if this method is not overridden.
    *
    * @param keys the unique, non-null keys whose values should be loaded
-   * @return a map from each key in {@code keys} to the value associated with that key; <b>may not
-   *     contain null values</b>
+   *             kp 非空、不重复的数据
+   *
+   * @return a map from each key in {@code keys} to the value associated with that key;
+   *         <b>may not contain null values 不能包含null</b>
+   *         kp 返回key及其对应的value
+   *
    * @throws Exception if unable to load the result
    * @throws InterruptedException if this method is interrupted. {@code InterruptedException} is
    *     treated like any other {@code Exception} in all respects except that, when it is caught,
@@ -132,6 +142,7 @@ public abstract class CacheLoader<K, V> {
   /**
    * Returns a cache loader that uses {@code function} to load keys, without supporting either
    * reloading or bulk loading. This allows creating a cache loader using a lambda expression.
+   * kp 见 FunctionToCacheLoader，使用指定的函数+key获取value。只有load
    *
    * @param function the function to be used for loading values; must never return {@code null}
    * @return a cache loader that loads values by passing each key to {@code function}
@@ -145,6 +156,7 @@ public abstract class CacheLoader<K, V> {
    * Returns a cache loader based on an <i>existing</i> supplier instance. Note that there's no need
    * to create a <i>new</i> supplier just to pass it in here; just subclass {@code CacheLoader} and
    * implement {@link #load load} instead.
+   * kp 见 SupplierToCacheLoader、使用指定的函数获取对应的value、忽略key。只有load
    *
    * @param supplier the supplier to be used for loading values; must never return {@code null}
    * @return a cache loader that loads values by calling {@link Supplier#get}, irrespective of the
@@ -155,8 +167,10 @@ public abstract class CacheLoader<K, V> {
     return new SupplierToCacheLoader<V>(supplier);
   }
 
-  private static final class FunctionToCacheLoader<K, V> extends CacheLoader<K, V>
-      implements Serializable {
+  // kp 不同于 SupplierToCacheLoader，使用key获取对应的value
+  private static final class FunctionToCacheLoader<K, V>
+          extends CacheLoader<K, V>
+          implements Serializable {
     private final Function<K, V> computingFunction;
 
     public FunctionToCacheLoader(Function<K, V> computingFunction) {
@@ -172,8 +186,10 @@ public abstract class CacheLoader<K, V> {
   }
 
   /**
-   * Returns a {@code CacheLoader} which wraps {@code loader}, executing calls to {@link
-   * CacheLoader#reload} using {@code executor}.
+   * kp 重要。
+   * Returns a {@code CacheLoader} which wraps {@code loader},
+   * executing calls to {@link CacheLoader#reload} using {@code executor}.
+   * kp 使用 制定线程池执行 reload 去刷新已经存在的key。重点、只是异步执行 reload。
    *
    * <p>This method is useful only when {@code loader.reload} has a synchronous implementation, such
    * as {@linkplain #reload the default implementation}.
@@ -183,7 +199,8 @@ public abstract class CacheLoader<K, V> {
   @CheckReturnValue
   @GwtIncompatible // Executor + Futures
   public static <K, V> CacheLoader<K, V> asyncReloading(
-      final CacheLoader<K, V> loader, final Executor executor) {
+          final CacheLoader<K, V> loader,
+          final Executor executor) {
     checkNotNull(loader);
     checkNotNull(executor);
     return new CacheLoader<K, V>() {
@@ -192,16 +209,16 @@ public abstract class CacheLoader<K, V> {
         return loader.load(key);
       }
 
+      // kp 使用指定线程池执行 reload 的任务
       @Override
       public ListenableFuture<V> reload(final K key, final V oldValue) throws Exception {
-        ListenableFutureTask<V> task =
-            ListenableFutureTask.create(
-                new Callable<V>() {
-                  @Override
-                  public V call() throws Exception {
-                    return loader.reload(key, oldValue).get();
-                  }
-                });
+        ListenableFutureTask<V> task = ListenableFutureTask.create(
+                        new Callable<V>() {
+                          @Override
+                          public V call() throws Exception {
+                            return loader.reload(key, oldValue).get();
+                          }
+                        });
         executor.execute(task);
         return task;
       }
@@ -213,14 +230,18 @@ public abstract class CacheLoader<K, V> {
     };
   }
 
-  private static final class SupplierToCacheLoader<V> extends CacheLoader<Object, V>
-      implements Serializable {
+  // kp 使用指定函数获取对应的value、忽略key
+  private static final class SupplierToCacheLoader<V>
+          extends CacheLoader<Object, V>
+          implements Serializable {
     private final Supplier<V> computingSupplier;
 
+    // kp 构造函数
     public SupplierToCacheLoader(Supplier<V> computingSupplier) {
       this.computingSupplier = checkNotNull(computingSupplier);
     }
 
+    // kp 使用指定函数获取key对应的value
     @Override
     public V load(Object key) {
       checkNotNull(key);
@@ -232,6 +253,7 @@ public abstract class CacheLoader<K, V> {
 
   /**
    * Exception thrown by {@code loadAll()} to indicate that it is not supported.
+   * kp RuntimeException、表明 CacheLoader不支持 loadAll
    *
    * @since 19.0
    */
@@ -244,6 +266,7 @@ public abstract class CacheLoader<K, V> {
 
   /**
    * Thrown to indicate that an invalid response was returned from a call to {@link CacheLoader}.
+   * kp 无效的返回值
    *
    * @since 11.0
    */

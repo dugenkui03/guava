@@ -218,6 +218,7 @@ public final class Uninterruptibles {
 
   /**
    * Invokes {@code future.}{@link Future#get() get()} uninterruptibly.
+   * kp 返回异步任务的结果、即使线程已经中断。
    *
    * <p>Similar methods:
    *

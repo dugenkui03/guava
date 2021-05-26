@@ -734,11 +734,15 @@ public abstract class AbstractFuture<V> extends InternalFutureFailureAccess
    * yet. That result, though not yet known, cannot be overridden by a call to a {@code set*}
    * method, only by a call to {@link #cancel}.
    *
+   * 为该异步任务设置结果
+   *
    * <p>Beware of completing a future while holding a lock. Its listeners may do slow work or
    * acquire other locks, risking deadlocks.
    *
    * @param value the value to be used as the result
+   *
    * @return true if the attempt was accepted, completing the {@code Future}
+   *         是否成功设置结果
    */
   @CanIgnoreReturnValue
   protected boolean set(@Nullable V value) {

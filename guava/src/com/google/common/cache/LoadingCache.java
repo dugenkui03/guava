@@ -55,6 +55,7 @@ public interface LoadingCache<K, V> extends Cache<K, V>, Function<K, V> {
    *
    * <p>If the cache loader associated with this cache is known not to throw checked exceptions,
    * then prefer {@link #getUnchecked} over this method.
+   * kp 如果 CacheLoader#get() 不抛检查异常、则使用 getUnchecked 获取数据(可能调用到 CacheLoader#get())
    *
    * @throws ExecutionException if a checked exception was thrown while loading the value. ({@code
    *     ExecutionException} is thrown <a
@@ -77,8 +78,9 @@ public interface LoadingCache<K, V> extends Cache<K, V>, Function<K, V> {
    * multiple threads can concurrently load values for distinct keys.
    *
    * <p>Caches loaded by a {@link CacheLoader} will call {@link CacheLoader#load} to load new values
-   * into the cache. Newly loaded values are added to the cache using {@code
-   * Cache.asMap().putIfAbsent} after loading has completed; if another value was associated with
+   * into the cache. Newly loaded values are added to the cache
+   * using {@code Cache.asMap().putIfAbsent}  kp 如果没有数据才会放里边
+   * after loading has completed; if another value was associated with
    * {@code key} while the new value was loading then a removal notification will be sent for the
    * new value.
    *
