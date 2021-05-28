@@ -55,6 +55,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
    * <p>This implementation of {@code getAllPresent} lacks any insight into the internal cache data
    * structure, and is thus forced to return the query keys instead of the cached keys. This is only
    * possible with an unsafe cast which requires {@code keys} to actually be of type {@code K}.
+   * kp 内部通过 getIfPresent 获取数据，因为getIfPresent是从本地获取数据、所以是开销很小。
    *
    * @since 11.0
    */
@@ -62,9 +63,11 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
   public ImmutableMap<K, V> getAllPresent(Iterable<?> keys) {
     Map<K, V> result = Maps.newLinkedHashMap();
     for (Object key : keys) {
+      // 如果已经解析过则不在解析
       if (!result.containsKey(key)) {
         @SuppressWarnings("unchecked")
         K castKey = (K) key;
+        // getIfPresent 只会获取已经缓存了的数据
         V value = getIfPresent(key);
         if (value != null) {
           result.put(castKey, value);
@@ -104,6 +107,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
   /** @since 11.0 */
   @Override
   public void invalidateAll(Iterable<?> keys) {
+    // 并非线程安全
     for (Object key : keys) {
       invalidate(key);
     }
@@ -196,7 +200,6 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
    * @since 10.0
    */
   public static final class SimpleStatsCounter implements StatsCounter {
-    // todo
     private final LongAddable hitCount = LongAddables.create();
     private final LongAddable missCount = LongAddables.create();
     private final LongAddable loadSuccessCount = LongAddables.create();
