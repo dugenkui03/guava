@@ -201,10 +201,16 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
   /** Weigher to weigh cache entries. */
   final Weigher<K, V> weigher;
 
-  /** How long after the last access to an entry the map will retain that entry. */
+  /**
+   * How long after the last access to an entry the map will retain that entry.
+   *
+   * entry 过期时间
+   */
   final long expireAfterAccessNanos;
 
-  /** How long after the last write to an entry the map will retain that entry. */
+  /**
+   * How long after the last write to an entry the map will retain that entry.
+   */
   final long expireAfterWriteNanos;
 
   /**
@@ -633,7 +639,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     }
   }
 
-  /** A reference to a value. */
+  /**
+   * A reference to a value.
+   * 对值的引用。
+   */
   interface ValueReference<K, V> {
     /**
      * Returns the value. Does not block or throw exceptions.
@@ -644,20 +653,23 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     V get();
 
     /**
-     * Waits for a value that may still be loading. Unlike get(), this method can block (in the case
-     * of FutureValueReference).
+     * Waits for a value that may still be loading.
+     * Unlike get(), this method can block (in the case of FutureValueReference).
+     * kp 阻塞等待获取结果。
      *
      * @throws ExecutionException if the loading thread throws an exception
      * @throws ExecutionError if the loading thread throws an error
      */
     V waitForValue() throws ExecutionException;
 
-    /** Returns the weight of this entry. This is assumed to be static between calls to setValue. */
+    /**
+     * Returns the weight of this entry. This is assumed to be static between calls to setValue.
+     */
     int getWeight();
 
     /**
-     * Returns the entry associated with this value reference, or {@code null} if this value
-     * reference is independent of any entry.
+     * Returns the entry associated with this value reference,
+     * or {@code null} if this value reference is independent of any entry.
      */
     @Nullable
     ReferenceEntry<K, V> getEntry();
@@ -671,15 +683,15 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
         ReferenceQueue<V> queue, @Nullable V value, ReferenceEntry<K, V> entry);
 
     /**
-     * Notify pending loads that a new value was set. This is only relevant to loading value
-     * references.
+     * Notify pending loads that a new value was set.
+     * This is only relevant to loading value references.
      */
     void notifyNewValue(@Nullable V newValue);
 
     /**
-     * Returns true if a new value is currently loading, regardless of whether or not there is an
-     * existing value.
-     * kp 如果新值正在加载、则返回true。
+     * Returns true if a new value is currently loading,
+     * regardless of whether or not there is an existing value.
+     * kp 如果新值正在加载则返回true，忽略当前是否有值。
      *
      * It is assumed that the return value of this method is constant for any given
      * ValueReference instance.
@@ -687,11 +699,14 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     boolean isLoading();
 
     /**
-     * Returns true if this reference contains an active value, meaning one that is still considered
-     * present in the cache. Active values consist of live values, which are returned by cache
+     * Returns true if this reference contains an active value,
+     * meaning one that is still considered present in the cache.
+     * Active values consist of live values, which are returned by cache
      * lookups, and dead values, which have been evicted but awaiting removal. Non-active values
      * consist strictly of loading values, though during refresh a value may be both active and
      * loading.
+     *
+     * kp 当前引用是否指向了一个活跃的值、即我们认为在内存中的数据。
      */
     boolean isActive();
   }
@@ -1741,8 +1756,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
   /**
    * Returns the segment that should be used for a key with the given hash.
+   * kp 提供key的hash值、获取该key应该在哪个Segment中存储
    *
    * @param hash the hash code for the key
+   *             key 的hash值
    * @return the segment
    */
   Segment<K, V> segmentFor(int hash) {
@@ -1758,10 +1775,13 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
   }
 
   /**
-   * Gets the value from an entry. Returns null if the entry is invalid, partially-collected,
-   * loading, or expired. Unlike {@link Segment#getLiveValue} this method does not attempt to
+   * Gets the value from an entry.
+   * Returns null if the entry is invalid, partially-collected, loading, or expired.
+   * Unlike {@link Segment#getLiveValue} this method does not attempt to
    * cleanup stale entries. As such it should only be called outside of a segment context, such as
    * during iteration.
+   *
+   * kp 获取该引用对应的存活value。
    */
   @Nullable
   V getLiveValue(ReferenceEntry<K, V> entry, long now) {
@@ -1791,7 +1811,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     if (expiresAfterAccess() && (now - entry.getAccessTime() >= expireAfterAccessNanos)) {
       return true;
     }
-    if (expiresAfterWrite() && (now - entry.getWriteTime() >= expireAfterWriteNanos)) {
+
+    if (expiresAfterWrite()
+            && (now - entry.getWriteTime() >= expireAfterWriteNanos)) {
       return true;
     }
     return false;
@@ -1892,7 +1914,11 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     @Weak
     final LocalCache<K, V> map;
 
-    /** The number of live elements in this segment's region. */
+    /**
+     * The number of live elements in this segment's region.
+     *
+     * Segment中的变量、该片段中存活的entry数量
+     */
     volatile int count;
 
     /**
@@ -1916,7 +1942,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
      */
     int threshold;
 
-    /** The per-segment table. */
+    /**
+     * The per-segment table.
+     */
     volatile @Nullable AtomicReferenceArray<ReferenceEntry<K, V>> table;
 
     /** The maximum weight of this segment. UNSET_INT if there is no maximum. */
@@ -1936,7 +1964,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
     /**
      * The recency queue is used to record which entries were accessed for updating the access
-     * list's ordering. It is drained as a batch operation when either the DRAIN_THRESHOLD is
+     * list's ordering.
+     *
+     * It is drained as a batch operation when either the DRAIN_THRESHOLD is
      * crossed or a write occurs on the segment.
      */
     final Queue<ReferenceEntry<K, V>> recencyQueue;
@@ -2053,19 +2083,31 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
     // loading
 
+    /**
+     * @param key load-key
+     * @param hash load-key-hash
+     * @param loader cacheLoader
+     * @return loaded-value
+     * @throws ExecutionException
+     */
     V get(K key, int hash, CacheLoader<? super K, V> loader) throws ExecutionException {
       checkNotNull(key);
       checkNotNull(loader);
       try {
-        if (count != 0) { // read-volatile
+        // read-volatile：该segment中存活的entry数量不为空
+        if (count != 0) {
+
           // don't call getLiveEntry, which would ignore loading values
+          // kp 返回key对应的entry，没有则返回null
           ReferenceEntry<K, V> e = getEntry(key, hash);
+
+          // 如果当前元素在缓存中：e != null
           if (e != null) {
             // 获取当前时间-纳秒
             long now = map.ticker.read();
-            // 获取缓存的数据
+            // 根据当前时间从entry中获取可用value或者null：判断写入和访问过期时间。
             V value = getLiveValue(e, now);
-            // 如果缓存的数据不为空
+            // 如果数据为null。
             if (value != null) {
               // 更新缓存访问时间
               recordRead(e, now);
@@ -2204,24 +2246,32 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       }
     }
 
-    V waitForLoadingValue(ReferenceEntry<K, V> e, K key, ValueReference<K, V> valueReference)
-        throws ExecutionException {
+    V waitForLoadingValue(ReferenceEntry<K, V> e,
+                          K key,
+                          ValueReference<K, V> valueReference) throws ExecutionException {
+      // valueReference 必须是 正在加载 的状态
       if (!valueReference.isLoading()) {
         throw new AssertionError();
       }
 
+      // 确认当前线程没有持有 e 的锁
       checkState(!Thread.holdsLock(e), "Recursive load of: %s", key);
+
       // don't consider expiration as we're concurrent with loading
       try {
+        // 阻塞等待获取结果
         V value = valueReference.waitForValue();
         if (value == null) {
           throw new InvalidCacheLoadException("CacheLoader returned null for key " + key + ".");
         }
+
         // re-read ticker now that loading has completed
+        // 获取当前时间并设置为entry的访问时间
         long now = map.ticker.read();
         recordRead(e, now);
         return value;
       } finally {
+        // kp 因为是重新加载记录的是 misses
         statsCounter.recordMisses(1);
       }
     }
@@ -2375,7 +2425,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
                       V oldValue,
                       long now,
                       CacheLoader<? super K, V> loader) {
-      // todo map 是什么
+      // kp map就是外层的LocalCache对象
       if (map.refreshes() // 如果设置了刷新间隔
               // 当前时间距离写入时间大于指定的间隔
               && (now - entry.getWriteTime() > map.refreshNanos)
@@ -2571,6 +2621,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
      * Records the relative order in which this read was performed by adding {@code entry} to the
      * recency queue. At write-time, or when the queue is full past the threshold, the queue will be
      * drained and the entries therein processed.
+     * kp 设置entry的访问时间。
      *
      * <p>Note: locked reads should use {@link #recordLockedRead}.
      */
@@ -2725,7 +2776,11 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       throw new AssertionError();
     }
 
-    /** Returns first entry of bin for given hash. */
+    /**
+     * Returns first entry of bin for given hash.
+     * <p>
+     * kp 返回hash值对应的 entry链 中的第一个元素。
+     */
     ReferenceEntry<K, V> getFirst(int hash) {
       // read this volatile field only once
       AtomicReferenceArray<ReferenceEntry<K, V>> table = this.table;
@@ -2736,6 +2791,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
     @Nullable
     ReferenceEntry<K, V> getEntry(Object key, int hash) {
+      // kp 返回hash值对应的 entry链 中的第一个元素，然后进行遍历
+      //    如果两个key也相等，则返回
       for (ReferenceEntry<K, V> e = getFirst(hash); e != null; e = e.getNext()) {
         if (e.getHash() != hash) {
           continue;
@@ -2747,6 +2804,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
           continue;
         }
 
+        // 如果两个key也相等，则返回
         if (map.keyEquivalence.equivalent(key, entryKey)) {
           return e;
         }
@@ -2770,7 +2828,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     /**
      * Gets the value from an entry.
      * Returns null if the entry is invalid, partially-collected, loading, or expired.
-     *
+     * kp 根据当前时间从entry中获取可用value或者null：判断写入和访问过期时间。
      */
     V getLiveValue(ReferenceEntry<K, V> entry, long now) {
       /**
@@ -3049,9 +3107,12 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
     @Nullable
     V replace(K key, int hash, V newValue) {
+      // 线程安全，啧啧啧～～～
       lock();
       try {
+        // 当前时间
         long now = map.ticker.read();
+        // todo 干啥的
         preWriteCleanup(now);
 
         AtomicReferenceArray<ReferenceEntry<K, V>> table = this.table;
@@ -3060,18 +3121,22 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
         for (ReferenceEntry<K, V> e = first; e != null; e = e.getNext()) {
           K entryKey = e.getKey();
-          if (e.getHash() == hash
-              && entryKey != null
-              && map.keyEquivalence.equivalent(key, entryKey)) {
+
+          if (e.getHash() == hash // 如果entry hash相同
+              && entryKey != null // 遍历的节点key不为null
+              && map.keyEquivalence.equivalent(key, entryKey) // key 相同
+          ) {
+            // old entry 引用
             ValueReference<K, V> valueReference = e.getValueReference();
+
+            // old value：如果old value为null、最后返回的结果也是null
             V entryValue = valueReference.get();
             if (entryValue == null) {
               if (valueReference.isActive()) {
                 // If the value disappeared, this entry is partially collected.
                 int newCount = this.count - 1;
                 ++modCount;
-                ReferenceEntry<K, V> newFirst =
-                    removeValueFromChain(
+                ReferenceEntry<K, V> newFirst = removeValueFromChain(
                         first,
                         e,
                         entryKey,
@@ -3079,16 +3144,19 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
                         entryValue,
                         valueReference,
                         RemovalCause.COLLECTED);
+
                 newCount = this.count - 1;
                 table.set(index, newFirst);
                 this.count = newCount; // write-volatile
               }
               return null;
-            }
+            } // end of entryValue == null
 
             ++modCount;
             enqueueNotification(
-                key, hash, entryValue, valueReference.getWeight(), RemovalCause.REPLACED);
+                    key, hash, entryValue, valueReference.getWeight(), RemovalCause.REPLACED
+            );
+
             setValue(e, key, newValue, now);
             evictEntries(e);
             return entryValue;
@@ -4043,8 +4111,12 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
   }
 
   V get(K key, CacheLoader<? super K, V> loader) throws ExecutionException {
+    // 计算出key的hash值
     int hash = hash(checkNotNull(key));
-    return segmentFor(hash).get(key, hash, loader);
+    // 获取key存储的Segment
+    Segment<K, V> kvSegment = segmentFor(hash);
+    // 从segment中获取value
+    return kvSegment.get(key, hash, loader);
   }
 
   public @Nullable V getIfPresent(Object key) {
@@ -4367,14 +4439,19 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return segmentFor(hash).replace(key, hash, oldValue, newValue);
   }
 
+  // 只有当 key 包含在map中的时候才进行替换
   @Override
   public V replace(K key, V value) {
     checkNotNull(key);
     checkNotNull(value);
+    // 获取key的hash值
     int hash = hash(key);
-    return segmentFor(hash).replace(key, hash, value);
+
+    Segment<K, V> segment = segmentFor(hash);
+    return segment.replace(key, hash, value);
   }
 
+  // 不需要加锁，ConcurrentMap中并没有定义说明 clear 需要线程安全
   @Override
   public void clear() {
     for (Segment<K, V> segment : segments) {
@@ -4398,7 +4475,8 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return (ks != null) ? ks : (keySet = new KeySet());
   }
 
-  @RetainedWith @Nullable Collection<V> values;
+  @RetainedWith
+  @Nullable Collection<V> values;
 
   @Override
   public Collection<V> values() {
@@ -4407,8 +4485,10 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     return (vs != null) ? vs : (values = new Values());
   }
 
-  @RetainedWith @Nullable Set<Entry<K, V>> entrySet;
+  @RetainedWith
+  @Nullable Set<Entry<K, V>> entrySet;
 
+  // 返回不返回null
   @Override
   @GwtIncompatible // Not supported.
   public Set<Entry<K, V>> entrySet() {
@@ -4890,8 +4970,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
    * <p>Unfortunately, readResolve() doesn't get called when a circular dependency is present, so
    * the proxy must be able to behave as the cache itself.
    */
-  static final class LoadingSerializationProxy<K, V> extends ManualSerializationProxy<K, V>
-      implements LoadingCache<K, V>, Serializable {
+  static final class LoadingSerializationProxy<K, V>
+          extends ManualSerializationProxy<K, V>
+          implements LoadingCache<K, V>, Serializable {
     private static final long serialVersionUID = 1;
 
     transient @Nullable LoadingCache<K, V> autoDelegate;

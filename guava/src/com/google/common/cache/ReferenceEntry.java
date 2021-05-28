@@ -50,11 +50,17 @@ interface ReferenceEntry<K, V> {
   /** Sets the value reference for this entry. */
   void setValueReference(ValueReference<K, V> valueReference);
 
-  /** Returns the next entry in the chain. */
+  /**
+   * Returns the next entry in the chain.
+   *
+   * kp 返回 entry链 的下一个元素。
+   */
   @Nullable
   ReferenceEntry<K, V> getNext();
 
-  /** Returns the entry's hash. */
+  /**
+   * Returns the entry's hash.
+   */
   int getHash();
 
   /** Returns the key for this entry. */
@@ -67,7 +73,11 @@ interface ReferenceEntry<K, V> {
    * the head of the list.
    */
 
-  /** Returns the time that this entry was last accessed, in ns. */
+  /**
+   * Returns the time that this entry was last accessed, in ns.
+   *
+   * kp 最后一次访问该key的纳秒时间戳。
+   */
   @SuppressWarnings("GoodTime")
   long getAccessTime();
 
@@ -75,13 +85,21 @@ interface ReferenceEntry<K, V> {
   @SuppressWarnings("GoodTime") // b/122668874
   void setAccessTime(long time);
 
-  /** Returns the next entry in the access queue. */
+  /**
+   * Returns the next entry in the access queue.
+   *
+   * kp 获取访问队列中的下一个元素
+   */
   ReferenceEntry<K, V> getNextInAccessQueue();
 
   /** Sets the next entry in the access queue. */
   void setNextInAccessQueue(ReferenceEntry<K, V> next);
 
-  /** Returns the previous entry in the access queue. */
+  /**
+   * Returns the previous entry in the access queue.
+   *
+   * kp 获取访问队列中前一个元素。
+   */
   ReferenceEntry<K, V> getPreviousInAccessQueue();
 
   /** Sets the previous entry in the access queue. */
@@ -93,6 +111,7 @@ interface ReferenceEntry<K, V> {
    * expired from the head of the list.
    */
 
+  // entry的写入或者更新时间
   @SuppressWarnings("GoodTime")
   /** Returns the time that this entry was last written, in ns. */
   long getWriteTime();

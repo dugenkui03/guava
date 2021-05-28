@@ -266,11 +266,12 @@ public abstract class CacheLoader<K, V> {
 
   /**
    * Thrown to indicate that an invalid response was returned from a call to {@link CacheLoader}.
-   * kp 无效的返回值
+   * kp 无效的返回值，运行时异常。
    *
    * @since 11.0
    */
-  public static final class InvalidCacheLoadException extends RuntimeException {
+  public static final class InvalidCacheLoadException
+          extends RuntimeException {
     public InvalidCacheLoadException(String message) {
       super(message);
     }
