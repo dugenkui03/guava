@@ -35,7 +35,6 @@ import com.google.common.cache.CacheBuilder.NullListener;
 import com.google.common.cache.CacheBuilder.OneWeigher;
 import com.google.common.cache.CacheLoader.InvalidCacheLoadException;
 import com.google.common.cache.CacheLoader.UnsupportedLoadingOperationException;
-import com.google.common.cache.LocalCache.AbstractCacheSet;
 import com.google.common.collect.AbstractSequentialIterator;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -89,6 +88,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * The concurrent hash map implementation built by {@link CacheBuilder}.
+ * kp 该类其实是一个可以被动刷新数据的 ConcurrentMap。
  *
  * <p>This implementation is heavily derived from revision 1.96 of <a
  * href="http://tinyurl.com/ConcurrentHashMap">ConcurrentHashMap.java</a>.
@@ -1805,6 +1805,7 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
    * Returns true if the entry has expired.
    *
    * kp 写入过期 或者 访问过期满足其中之一，就会返回true
+   *    只判断的是过期时间，而非刷新时间。
    */
   boolean isExpired(ReferenceEntry<K, V> entry, long now) {
     checkNotNull(entry);
@@ -2144,15 +2145,18 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
       try {
         if (count != 0) { // read-volatile
           long now = map.ticker.read();
-          ReferenceEntry<K, V> e = getLiveEntry(key, hash, now);
-          if (e == null) {
+          // kp 返回 key 对应的 entry
+          ReferenceEntry<K, V> rEntry = getLiveEntry(key, hash, now);
+          if (rEntry == null) {
             return null;
           }
 
-          V value = e.getValueReference().get();
+          V value = rEntry.getValueReference().get();
+
+          // kp 重点：如果找到可对应key的数据、切该数据没有过期、也需要判断该key是否过了刷新时间
           if (value != null) {
-            recordRead(e, now);
-            return scheduleRefresh(e, e.getKey(), hash, value, now, map.defaultLoader);
+            recordRead(rEntry, now);
+            return scheduleRefresh(rEntry, rEntry.getKey(), hash, value, now, map.defaultLoader);
           }
           tryDrainReferenceQueues();
         }
@@ -2791,22 +2795,26 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
     @Nullable
     ReferenceEntry<K, V> getEntry(Object key, int hash) {
-      // kp 返回hash值对应的 entry链 中的第一个元素，然后进行遍历
-      //    如果两个key也相等，则返回
-      for (ReferenceEntry<K, V> e = getFirst(hash); e != null; e = e.getNext()) {
-        if (e.getHash() != hash) {
+      ReferenceEntry<K, V> referenceChainWithTargetHash = getFirst(hash);
+      for (ReferenceEntry<K, V> referenceEntry = referenceChainWithTargetHash;
+           referenceEntry != null;
+           referenceEntry = referenceEntry.getNext()
+      ) {
+        if (referenceEntry.getHash() != hash) {
           continue;
         }
+        // hash 相同
 
-        K entryKey = e.getKey();
+        // ？entryKey已经被回收？
+        K entryKey = referenceEntry.getKey();
         if (entryKey == null) {
           tryDrainReferenceQueues();
           continue;
         }
 
-        // 如果两个key也相等，则返回
+        // kp 根据hash找到目标key的entry
         if (map.keyEquivalence.equivalent(key, entryKey)) {
-          return e;
+          return referenceEntry;
         }
       }
 
@@ -2815,14 +2823,17 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
 
     @Nullable
     ReferenceEntry<K, V> getLiveEntry(Object key, int hash, long now) {
-      ReferenceEntry<K, V> e = getEntry(key, hash);
-      if (e == null) {
+      // kp 返回 key 对应的 entry
+      ReferenceEntry<K, V> rEntry = getEntry(key, hash);
+
+      // kp 数据为null或者过期都返回null
+      if (rEntry == null) {
         return null;
-      } else if (map.isExpired(e, now)) {
+      } else if (map.isExpired(rEntry, now)) {
         tryExpireEntries(now);
         return null;
       }
-      return e;
+      return rEntry;
     }
 
     /**
@@ -4181,8 +4192,9 @@ class LocalCache<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> 
     // 要加载的数据：不重复、不再当前的缓存中
     Set<K> keysToLoad = Sets.newLinkedHashSet();
     for (K key : keys) {
+      V value = get(key);
       if (!result.containsKey(key)) {
-        V value = get(key);
+        // kp 数据没有过期但是需要刷新的话则会异步刷新
         result.put(key, value);
         if (value == null) {
           misses++;
